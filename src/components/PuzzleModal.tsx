@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { puzzles, Puzzle } from '@/data/gameData';
+import { puzzles, type Puzzle } from '@/data/gameData';
 import { useGame } from '@/contexts/GameContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,8 @@ export default function PuzzleModal({ puzzleId, onSolve }: PuzzleModalProps) {
 
   if (!puzzle) return null;
 
+  const isDisabled = solved || Boolean(puzzle.timeLimit && (!state.timeLeft || state.timeLeft <= 0));
+
   return (
     <Dialog open={showModal} onOpenChange={setShowModal}>
       <DialogTrigger asChild>
@@ -86,7 +88,7 @@ export default function PuzzleModal({ puzzleId, onSolve }: PuzzleModalProps) {
                 Time: {state.timeLeft || puzzle.timeLimit}s
               </div>
             )}
-            <Button onClick={handleSubmit} disabled={solved || (puzzle.timeLimit && (!state.timeLeft || state.timeLeft <= 0))}>
+            <Button onClick={handleSubmit} disabled={isDisabled}>
               Submit
             </Button>
           </CardContent>

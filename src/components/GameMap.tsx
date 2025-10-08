@@ -1,7 +1,6 @@
 import React from 'react';
-import { landmarks, hiddenObjects } from '@/data/gameData';
+import { landmarks, hiddenObjects, type Landmark, type HiddenObject } from '@/data/gameData';
 import { useGame } from '@/contexts/GameContext';
-import { Landmark, HiddenObject } from '@/data/gameData';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin, Search } from 'lucide-react';
@@ -26,12 +25,10 @@ export default function GameMap({ proceduralData }: GameMapProps) {
     const landmark = proceduralData.landmarks.find(l => l.x === x && l.y === y);
     if (landmark && !state.visitedLandmarks.includes(landmark.id)) {
       dispatch({ type: 'VISIT_LANDMARK', landmarkId: landmark.id });
-      if (location.pathname !== '/game') {
-        navigate({
-          to: '/game/landmark' as const,
-          search: (prev: any) => ({ ...prev, id: landmark.id })
-        } as any);
-      }
+      navigate({
+        to: '/game/landmark' as const,
+        search: (prev: any) => ({ ...prev, id: landmark.id })
+      } as any);
     }
 
     // Check hidden object collection
@@ -39,9 +36,6 @@ export default function GameMap({ proceduralData }: GameMapProps) {
     if (obj && !state.inventory.some(i => i.id === obj.id)) {
       dispatch({ type: 'COLLECT_OBJECT', objectId: obj.id });
     }
-
-    // Advance mystery if at required landmark
-    // Simplified: Check if current step's landmark matches
   };
 
   const renderGridCell = (x: number, y: number) => {

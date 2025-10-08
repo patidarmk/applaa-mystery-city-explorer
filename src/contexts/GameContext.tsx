@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { landmarks, hiddenObjects, puzzles, achievements, mysteryClues, Landmark, HiddenObject, Puzzle, Achievement, MysteryClue } from '@/data/gameData';
+import { landmarks, hiddenObjects, puzzles, achievements, mysteryClues, type Landmark, type HiddenObject, type Puzzle, type Achievement, type MysteryClue } from '@/data/gameData';
 import { useToast } from '@/components/ui/use-toast';
 
 interface GameState {
@@ -10,9 +10,9 @@ interface GameState {
   solvedPuzzles: number[];
   unlockedAchievements: number[];
   currentMysteryStep: number;
-  gameSeed: number; // For procedural generation
+  gameSeed: number;
   isPlaying: boolean;
-  timeLeft?: number; // For timed challenges
+  timeLeft?: number;
 }
 
 type GameAction =
@@ -40,27 +40,23 @@ const initialState: GameState = {
 };
 
 function generateProceduralMap(seed: number): { landmarks: Landmark[]; hiddenObjects: HiddenObject[]; mysteryClues: MysteryClue[] } {
-  // Simple seeded random for positions and order
   const rand = (max: number) => {
     let s = seed;
     s = (s * 1103515245 + 12345) % 2147483647;
     return Math.floor((s / 2147483647) * max);
   };
 
-  // Shuffle landmark positions (10x10 grid)
-  const shuffledLandmarks = [...landmarks].map((l, i) => ({
+  const shuffledLandmarks = [...landmarks].map((l) => ({
     ...l,
     x: rand(9),
     y: rand(9),
   }));
 
-  // Randomize hidden object positions from possibles
   const shuffledObjects = hiddenObjects.map(obj => ({
     ...obj,
     currentLocation: obj.possibleLocations[rand(obj.possibleLocations.length)],
   }));
 
-  // Shuffle mystery clue order
   const shuffledClues = [...mysteryClues].sort(() => rand(2) - 1);
 
   return { landmarks: shuffledLandmarks, hiddenObjects: shuffledObjects, mysteryClues: shuffledClues };
@@ -133,32 +129,49 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(gameReducer, initialState);
   const proceduralData = React.useMemo(() => generateProceduralMap(state.gameSeed), [state.gameSeed]);
+  const { toast } = useToast();
+
+  const enhancedDispatch = React.useCallback((action: GameAction) => {
+    dispatch(action);
+    // Toast notifications
+    switch (action.type) {
+      case 'COLLECT_OBJECT':
+        toast({ title: "Found it!", description: "Hidden object collected!" });
+        break;
+      case 'VISIT_LANDMARK':
+        toast({ title: "Landmark Discovered!", description: "New place unlocked!" });
+        break;
+      case 'SOLVE_PUZZLE':
+        toast({ title: "Puzzle Solved!", description: "Great job!" });
+        break;
+      case 'UNLOCK_ACHIEVEMENT':
+        const ach = achievements.find(a => a.id === action.achievementId);
+        toast({ title: "Achievement Unlocked!", description: ach?.name });
+        break;
+    }
+  }, [dispatch, toast]);
 
   useEffect(() => {
-    // Save to localStorage
     localStorage.setItem('neoCityGame', JSON.stringify(state));
-    // Check achievements on changes
-    if (state.visitedLandmarks.length >= 1) dispatch({ type: 'UNLOCK_ACHIEVEMENT', achievementId: 1 });
-    if (state.inventory.length >= 3) dispatch({ type: 'UNLOCK_ACHIEVEMENT', achievementId: 2 });
-    if (state.solvedPuzzles.length >= 5) dispatch({ type: 'UNLOCK_ACHIEVEMENT', achievementId: 3 });
-    if (state.visitedLandmarks.length === landmarks.length) dispatch({ type: 'UNLOCK_ACHIEVEMENT', achievementId: 7 });
-    if (state.inventory.length === hiddenObjects.length) dispatch({ type: 'UNLOCK_ACHIEVEMENT', achievementId: 6 });
-    if (state.currentMysteryStep === mysteryClues.length) dispatch({ type: 'UNLOCK_ACHIEVEMENT', achievementId: 5 });
-    if (state.unlockedAchievements.length === achievements.length) dispatch({ type: 'UNLOCK_ACHIEVEMENT', achievementId: 8 });
-  }, [state]);
+    if (state.visitedLandmarks.length >= 1) enhancedDispatch({ type: 'UNLOCK_ACHIEVEMENT', achievementId: 1 });
+    if (state.inventory.length >= 3) enhancedDispatch({ type: 'UNLOCK_ACHIEVEMENT', achievementId: 2 });
+    if (state.solvedPuzzles.length >= 5) enhancedDispatch({ type: 'UNLOCK_ACHIEVEMENT', achievementId: 3 });
+    if (state.visitedLandmarks.length === landmarks.length) enhancedDispatch({ type: 'UNLOCK_ACHIEVEMENT', achievementId: 7 });
+    if (state.inventory.length === hiddenObjects.length) enhancedDispatch({ type: 'UNLOCK_ACHIEVEMENT', achievementId: 6 });
+    if (state.currentMysteryStep === mysteryClues.length) enhancedDispatch({ type: 'UNLOCK_ACHIEVEMENT', achievementId: 5 });
+    if (state.unlockedAchievements.length === achievements.length) enhancedDispatch({ type: 'UNLOCK_ACHIEVEMENT', achievementId: 8 });
+  }, [state, enhancedDispatch]);
 
   useEffect(() => {
-    // Load from localStorage
     const saved = localStorage.getItem('neoCityGame');
     if (saved) {
       const parsed = JSON.parse(saved);
-      dispatch({ type: 'START_GAME', seed: parsed.gameSeed });
-      // Restore other state via dispatch if needed
+      enhancedDispatch({ type: 'START_GAME', seed: parsed.gameSeed });
     }
-  }, []);
+  }, [enhancedDispatch]);
 
   return (
-    <GameContext.Provider value={{ state, dispatch, proceduralData }}>
+    <GameContext.Provider value={{ state, dispatch: enhancedDispatch, proceduralData }}>
       {children}
     </GameContext.Provider>
   );

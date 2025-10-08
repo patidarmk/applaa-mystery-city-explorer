@@ -12,7 +12,7 @@ interface LandmarkDetailProps {
   landmark: Landmark;
 }
 
-export default function LandmarkDetail({ landmark }: LandmarkDetailProps) {
+export default function LandmarkDetailComponent({ landmark }: LandmarkDetailProps) {
   const { state, dispatch, proceduralData } = useGame();
   const navigate = useNavigate();
   const search = useSearch({ from: '/game/landmark' as const } as any);
